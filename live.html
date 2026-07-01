@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Real Chat Application</title>
+<style>
+  :root{
+    --bg-app:#0b141a;
+    --bg-panel:#111b21;
+    --bg-sidebar:#202c33;
+    --bg-hover:#2a3942;
+    --bg-bubble-me:#005c4b;
+    --bg-bubble-them:#202c33;
+    --accent:#25d366;
+    --text-main:#e9edef;
+    --text-dim:#8696a0;
+    --border:#2f3b43;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Segoe UI',Tahoma,Arial,sans-serif;
+    background:var(--bg-app);
+    color:var(--text-main);
+    min-height:100vh;
+  }
+  .center-screen{
+    min-height:100vh;
+    display:flex;align-items:center;justify-content:center;
+    padding:24px;
+  }
+  .card{
+    background:linear-gradient(180deg, #1a262e 0%, var(--bg-sidebar) 100%);
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:32px;
+    max-width:420px;
+    width:100%;
+    box-shadow:0 20px 60px rgba(0,0,0,0.35);
+  }
+  .brand-mark{
+    width:52px;height:52px;border-radius:16px;
+    background:linear-gradient(135deg, var(--accent), #128c5a);
+    display:flex;align-items:center;justify-content:center;
+    font-size:24px;margin-bottom:18px;
+  }
+  .card h2{margin:0 0 8px;font-size:21px;font-weight:600;letter-spacing:-0.01em;}
+  .card p{margin:0 0 22px;font-size:13.5px;color:var(--text-dim);line-height:1.6;}
+  .card input{
+    width:100%;
+    background:var(--bg-panel);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:13px 15px;
+    color:var(--text-main);font-size:14.5px;outline:none;
+    margin-bottom:14px;
+    transition:border-color .15s;
+  }
+  .card input:focus{border-color:var(--accent);}
+  .card button{
+    width:100%;
+    background:var(--accent);
+    border:none;border-radius:10px;
+    padding:13px 14px;
+    color:#06231b;font-size:15px;font-weight:600;
+    cursor:pointer;
+    transition:filter .15s, transform .1s;
+  }
+  .card button:active{transform:scale(0.98);}
+  .card button:hover{filter:brightness(1.05);}
+  .card button.secondary{
+    background:transparent;border:1px solid var(--border);color:var(--text-main);margin-top:8px;
+  }
+  .link-box{
+    background:var(--bg-panel);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:10px 12px;
+    font-size:12.5px;
+    color:var(--accent);
+    word-break:break-all;
+    margin-bottom:12px;
+  }
+  .app{display:flex;height:100vh;}
+  .sidebar{
+    width:300px;
+    background:var(--bg-sidebar);
+    border-right:1px solid var(--border);
+    display:flex;flex-direction:column;
+  }
+  .sidebar-header{
+    padding:14px 16px;
+    border-bottom:1px solid var(--border);
+  }
+  .room-title{font-weight:600;font-size:15px;}
+  .room-sub{font-size:12px;color:var(--text-dim);margin-top:2px;}
+  .invite-btn{
+    margin:12px 16px 0 16px;
+    background:var(--bg-panel);
+    border:1px solid var(--border);
+    color:var(--accent);
+    padding:9px 10px;border-radius:8px;
+    font-size:12.5px;cursor:pointer;text-align:center;
+  }
+  .invite-btn:hover{background:var(--bg-hover);}
+  .members{flex:1;overflow-y:auto;padding:14px 0;}
+  .members-label{padding:0 16px 8px;font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;}
+  .member-row{
+    display:flex;align-items:center;gap:10px;
+    padding:8px 16px;
+  }
+  .avatar{
+    width:34px;height:34px;border-radius:50%;
+    background:var(--accent);color:#06231b;
+    display:flex;align-items:center;justify-content:center;
+    font-weight:600;font-size:13px;flex-shrink:0;
+  }
+  .member-name{font-size:13.5px;}
+  .member-you{font-size:11px;color:var(--text-dim);}
+  .leave-btn{
+    margin:auto 16px 16px 16px;
+    background:transparent;border:1px solid #5a2b2b;color:#e07b7b;
+    padding:9px;border-radius:8px;font-size:12.5px;cursor:pointer;
+  }
+  .leave-btn:hover{background:#2a1414;}
+  .main{flex:1;display:flex;flex-direction:column;background:var(--bg-panel);}
+  .main-header{
+    padding:12px 18px;background:var(--bg-sidebar);
+    border-bottom:1px solid var(--border);
+    font-size:13px;color:var(--text-dim);
+  }
+  .thread{
+    flex:1;overflow-y:auto;padding:18px 8%;
+    display:flex;flex-direction:column;gap:6px;
+    background:
+      linear-gradient(rgba(11,20,26,0.92),rgba(11,20,26,0.92)),
+      repeating-linear-gradient(45deg, #15212a 0px, #15212a 2px, transparent 2px, transparent 40px);
+  }
+  .bubble-row{display:flex;flex-direction:column;}
+  .bubble-row.me{align-items:flex-end;}
+  .bubble-row.them{align-items:flex-start;}
+  .sender-label{font-size:11.5px;color:var(--text-dim);margin:6px 4px 2px;}
+  .bubble{
+    max-width:65%;
+    padding:7px 10px 8px 10px;
+    border-radius:9px;
+    font-size:14.2px;line-height:1.4;
+  }
+  .bubble.me{background:var(--bg-bubble-me);border-top-right-radius:0;}
+  .bubble.them{background:var(--bg-bubble-them);border-top-left-radius:0;}
+  .bubble .t{font-size:10.5px;color:var(--text-dim);display:block;text-align:right;margin-top:3px;}
+  .system-note{
+    text-align:center;font-size:11.5px;color:var(--text-dim);
+    background:rgba(255,255,255,0.03);
+    margin:6px auto;padding:5px 12px;border-radius:8px;
+  }
+  .composer{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--bg-sidebar);}
+  .composer input{
+    flex:1;background:var(--bg-panel);border:none;border-radius:20px;
+    padding:11px 16px;color:var(--text-main);font-size:14px;outline:none;
+  }
+  .send-btn{
+    width:42px;height:42px;border-radius:50%;background:var(--accent);border:none;
+    color:#06231b;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  }
+  .toast{
+    position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+    background:var(--accent);color:#06231b;padding:9px 18px;border-radius:8px;
+    font-size:13px;font-weight:500;z-index:50;opacity:0;transition:opacity .25s;
+  }
+  .toast.show{opacity:1;}
+  .err{color:#e07b7b;font-size:12.5px;margin:-4px 0 12px;}
+  ::-webkit-scrollbar{width:6px;}
+  ::-webkit-scrollbar-thumb{background:#2f3b43;border-radius:4px;}
+</style>
+</head>
+<body>
+
+<div id="root"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const ROOM_KEY = 'room_id';
+const ME_KEY = 'me_id';
+
+function getQueryParam(name){
+  return new URLSearchParams(window.location.search).get(name);
+}
+function genId(len=8){
+  const chars='abcdefghijkmnpqrstuvwxyz23456789';
+  let s='';
+  for(let i=0;i<len;i++) s+=chars[Math.floor(Math.random()*chars.length)];
+  return s;
+}
+function initials(name){
+  return name.trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();
+}
+function escapeHtml(s){
+  const d=document.createElement('div'); d.textContent=s; return d.innerHTML;
+}
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),1800);
+}
+function timeNow(){
+  const now=new Date();
+  let h=now.getHours()%12||12;
+  const m=now.getMinutes().toString().padStart(2,'0');
+  const ampm=now.getHours()>=12?'PM':'AM';
+  return `${h}:${m} ${ampm}`;
+}
+
+let myId = sessionStorage_fallback(ME_KEY) || (genId(10));
+function sessionStorage_fallback(){ return null; } // no browser storage allowed; identity kept in-memory per tab
+
+let state = {
+  screen: 'loading', // loading | create | join | chat
+  roomId: null,
+  myName: '',
+  roomMeta: null,
+  messages: [],
+  participants: [],
+  error: ''
+};
+
+async function storageGet(key) {
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : null;
+}
+
+async function storageSet(key, value) {
+    localStorage.setItem(key, JSON.stringify(value));
+    return true;
+}
+
+function render(){
+  const root = document.getElementById('root');
+  if(state.screen === 'loading'){
+    root.innerHTML = `<div class="center-screen"><div class="card"><h2>Loading...</h2></div></div>`;
+    return;
+  }
+  if(state.screen === 'create'){
+    root.innerHTML = `
+      <div class="center-screen">
+        <div class="card">
+          <div class="brand-mark">💬</div>
+          <h2>Real Chat Application</h2>
+          <p>Enter your name to start a real chat. Only people you send the invite link to will be able to join.</p>
+          <input id="nameInput" placeholder="Enter Name" autocomplete="off">
+          <div class="err" id="errBox" style="display:none;"></div>
+          <button id="createBtn">Start chat</button>
+        </div>
+      </div>`;
+    document.getElementById('createBtn').onclick = onCreateRoom;
+    document.getElementById('nameInput').addEventListener('keydown', e=>{ if(e.key==='Enter') onCreateRoom(); });
+    return;
+  }
+  if(state.screen === 'join'){
+    root.innerHTML = `
+      <div class="center-screen">
+        <div class="card">
+          <div class="brand-mark">💬</div>
+          <h2>Join ${state.roomMeta ? escapeHtml(state.roomMeta.title) : 'Chat'}</h2>
+          <p>You've been invited to this chat. Enter your name to join.</p>
+          <input id="nameInput" placeholder="Enter Name" autocomplete="off">
+          <div class="err" id="errBox" style="display:none;"></div>
+          <button id="joinBtn">Join chat</button>
+        </div>
+      </div>`;
+    document.getElementById('joinBtn').onclick = onJoinRoom;
+    document.getElementById('nameInput').addEventListener('keydown', e=>{ if(e.key==='Enter') onJoinRoom(); });
+    return;
+  }
+  if(state.screen === 'chat'){
+    renderChat();
+    return;
+  }
+}
+
+async function onCreateRoom(){
+  const name = document.getElementById('nameInput').value.trim();
+  if(!name){ showErr('Please enter your name'); return; }
+  const roomId = genId(8);
+  myId = genId(10);
+  const meta = { title: `${name}'s chat`, createdBy: name, createdAt: Date.now() };
+  const participants = [{ id: myId, name }];
+  const messages = [{ system:true, text:`${name} started the chat`, time: timeNow() }];
+
+  await storageSet(`room:${roomId}:meta`, meta);
+  await storageSet(`room:${roomId}:participants`, participants);
+  await storageSet(`room:${roomId}:messages`, messages);
+
+  state.roomId = roomId;
+  state.myName = name;
+  state.roomMeta = meta;
+  state.participants = participants;
+  state.messages = messages;
+  state.screen = 'chat';
+
+  const url = new URL(window.location.href);
+  url.searchParams.set('room', roomId);
+  window.history.replaceState({}, '', url);
+
+  render();
+  startPolling();
+}
+
+async function onJoinRoom(){
+  const name = document.getElementById('nameInput').value.trim();
+  if(!name){ showErr('Please enter your name'); return; }
+  myId = genId(10);
+
+  let participants = await storageGet(`room:${state.roomId}:participants`) || [];
+  let messages = await storageGet(`room:${state.roomId}:messages`) || [];
+
+  participants.push({ id: myId, name });
+  messages.push({ system:true, text:`${name} joined the chat`, time: timeNow() });
+
+  await storageSet(`room:${state.roomId}:participants`, participants);
+  await storageSet(`room:${state.roomId}:messages`, messages);
+
+  state.myName = name;
+  state.participants = participants;
+  state.messages = messages;
+  state.screen = 'chat';
+  render();
+  startPolling();
+}
+
+function showErr(msg){
+  const box = document.getElementById('errBox');
+  box.textContent = msg;
+  box.style.display = 'block';
+}
+
+function renderChat(){
+  const root = document.getElementById('root');
+  const inviteLink = window.location.href;
+
+  root.innerHTML = `
+    <div class="app">
+      <div class="sidebar">
+        <div class="sidebar-header">
+          <div class="room-title">${state.roomMeta ? escapeHtml(state.roomMeta.title) : 'Chat'}</div>
+          <div class="room-sub">${state.participants.length} people in this chat</div>
+        </div>
+        <div class="invite-btn" id="copyInvite">🔗 Copy invite link</div>
+        <div class="members">
+          <div class="members-label">Members</div>
+          ${state.participants.map(p=>`
+            <div class="member-row">
+              <div class="avatar">${initials(p.name)}</div>
+              <div>
+                <div class="member-name">${escapeHtml(p.name)}</div>
+                ${p.id===myId ? '<div class="member-you">You</div>' : ''}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      <div class="main">
+        <div class="main-header">🔒 Only people who joined via the invite link can see this chat</div>
+        <div class="thread" id="thread"></div>
+        <div class="composer">
+          <input id="msgInput" placeholder="Type a message" autocomplete="off">
+          <button class="send-btn" id="sendBtn">➤</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  renderThread();
+
+  document.getElementById('copyInvite').onclick = ()=>{
+    navigator.clipboard.writeText(inviteLink).then(()=>showToast('Link copied!'));
+  };
+
+  const input = document.getElementById('msgInput');
+  const send = async ()=>{
+    const text = input.value.trim();
+    if(!text) return;
+    input.value='';
+    const messages = await storageGet(`room:${state.roomId}:messages`) || [];
+    messages.push({ from:myId, fromName:state.myName, text, time: timeNow() });
+    await storageSet(`room:${state.roomId}:messages`, messages);
+    state.messages = messages;
+    renderThread();
+    input.focus();
+  };
+  document.getElementById('sendBtn').onclick = send;
+  input.onkeydown = (e)=>{ if(e.key==='Enter') send(); };
+  input.focus();
+}
+
+function renderThread(){
+  const thread = document.getElementById('thread');
+  if(!thread) return;
+  thread.innerHTML = state.messages.map(m=>{
+    if(m.system){
+      return `<div class="system-note">${escapeHtml(m.text)}</div>`;
+    }
+    const isMe = m.from === myId;
+    return `
+      <div class="bubble-row ${isMe?'me':'them'}">
+        ${!isMe ? `<div class="sender-label">${escapeHtml(m.fromName||'')}</div>` : ''}
+        <div class="bubble ${isMe?'me':'them'}">
+          ${escapeHtml(m.text)}
+          <span class="t">${m.time}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+  thread.scrollTop = thread.scrollHeight;
+}
+
+let pollTimer = null;
+function startPolling(){
+  if(pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(async ()=>{
+    const messages = await storageGet(`room:${state.roomId}:messages`);
+    const participants = await storageGet(`room:${state.roomId}:participants`);
+    let changed = false;
+    if(messages && JSON.stringify(messages) !== JSON.stringify(state.messages)){
+      state.messages = messages;
+      changed = true;
+    }
+    if(participants && JSON.stringify(participants) !== JSON.stringify(state.participants)){
+      state.participants = participants;
+      changed = true;
+    }
+    if(changed && state.screen==='chat'){
+      const sidebarMembers = document.querySelector('.members');
+      if(sidebarMembers){
+        sidebarMembers.innerHTML = `<div class="members-label">Members</div>` + state.participants.map(p=>`
+            <div class="member-row">
+              <div class="avatar">${initials(p.name)}</div>
+              <div>
+                <div class="member-name">${escapeHtml(p.name)}</div>
+                ${p.id===myId ? '<div class="member-you">You</div>' : ''}
+              </div>
+            </div>
+          `).join('');
+      }
+      renderThread();
+    }
+  }, 2500);
+}
+
+async function init(){
+  const roomParam = getQueryParam('room');
+  if(!roomParam){
+    state.screen = 'create';
+    render();
+    return;
+  }
+  state.roomId = roomParam;
+  const meta = await storageGet(`room:${roomParam}:meta`);
+  if(!meta){
+    state.screen = 'create';
+    render();
+    showToast('This link is invalid, start a new chat');
+    return;
+  }
+  state.roomMeta = meta;
+  state.screen = 'join';
+  render();
+}
+
+init();
+</script>
+
+</body>
+</html>
