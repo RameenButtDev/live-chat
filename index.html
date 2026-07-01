@@ -212,8 +212,23 @@ function timeNow(){
   return `${h}:${m} ${ampm}`;
 }
 
+// Session Helpers
+function sessionStorage_fallback(key) {
+  try {
+    return sessionStorage.getItem(key);
+  } catch (e) {
+    return null;
+  }
+}
+function sessionStorage_set(key, value) {
+  try {
+    sessionStorage.setItem(key, value);
+  } catch (e) {
+    // ignore
+  }
+}
+
 let myId = sessionStorage_fallback(ME_KEY) || (genId(10));
-function sessionStorage_fallback(){ return null; } // no browser storage allowed; identity kept in-memory per tab
 
 let state = {
   screen: 'loading', // loading | create | join | chat
@@ -225,14 +240,72 @@ let state = {
   error: ''
 };
 
-async function storageGet(key) {
-    const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : null;
+// Storage Type Detection
+let storageType = 'local'; // 'claude' | 'server' | 'local'
+
+async function detectStorage() {
+  if (typeof window.storage !== 'undefined' && typeof window.storage.get === 'function' && typeof window.storage.set === 'function') {
+    storageType = 'claude';
+    return;
+  }
+  // Try local server API
+  if (window.location.protocol.startsWith('http')) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 1000);
+      const res = await fetch('/api/storage?key=__ping__', { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        storageType = 'server';
+        return;
+      }
+    } catch (e) {
+      // server down or not present, fallback to local storage
+    }
+  }
+  storageType = 'local';
 }
 
-async function storageSet(key, value) {
-    localStorage.setItem(key, JSON.stringify(value));
-    return true;
+async function storageGet(key){
+  try{
+    if (storageType === 'claude') {
+      const r = await window.storage.get(key, true);
+      return r ? JSON.parse(r.value) : null;
+    } else if (storageType === 'server') {
+      const res = await fetch(`/api/storage?key=${encodeURIComponent(key)}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.value ? JSON.parse(data.value) : null;
+    } else {
+      const val = localStorage.getItem(key);
+      return val ? JSON.parse(val) : null;
+    }
+  }catch(e){
+    console.error('storage get failed', e);
+    return null;
+  }
+}
+
+async function storageSet(key, value){
+  try{
+    if (storageType === 'claude') {
+      await window.storage.set(key, JSON.stringify(value), true);
+      return true;
+    } else if (storageType === 'server') {
+      const res = await fetch('/api/storage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, value: JSON.stringify(value) })
+      });
+      return res.ok;
+    } else {
+      localStorage.setItem(key, JSON.stringify(value));
+      return true;
+    }
+  }catch(e){
+    console.error('storage set failed', e);
+    return false;
+  }
 }
 
 function render(){
@@ -284,6 +357,8 @@ async function onCreateRoom(){
   if(!name){ showErr('Please enter your name'); return; }
   const roomId = genId(8);
   myId = genId(10);
+  sessionStorage_set(ME_KEY, myId);
+
   const meta = { title: `${name}'s chat`, createdBy: name, createdAt: Date.now() };
   const participants = [{ id: myId, name }];
   const messages = [{ system:true, text:`${name} started the chat`, time: timeNow() }];
@@ -311,6 +386,7 @@ async function onJoinRoom(){
   const name = document.getElementById('nameInput').value.trim();
   if(!name){ showErr('Please enter your name'); return; }
   myId = genId(10);
+  sessionStorage_set(ME_KEY, myId);
 
   let participants = await storageGet(`room:${state.roomId}:participants`) || [];
   let messages = await storageGet(`room:${state.roomId}:messages`) || [];
@@ -449,6 +525,7 @@ function startPolling(){
 }
 
 async function init(){
+  await detectStorage();
   const roomParam = getQueryParam('room');
   if(!roomParam){
     state.screen = 'create';
@@ -464,8 +541,24 @@ async function init(){
     return;
   }
   state.roomMeta = meta;
-  state.screen = 'join';
-  render();
+
+  // Restore session if we are already in the participants list
+  const participants = await storageGet(`room:${roomParam}:participants`) || [];
+  const storedMyId = sessionStorage_fallback(ME_KEY);
+  const me = participants.find(p => p.id === storedMyId);
+
+  if (me) {
+    myId = storedMyId;
+    state.myName = me.name;
+    state.participants = participants;
+    state.messages = await storageGet(`room:${roomParam}:messages`) || [];
+    state.screen = 'chat';
+    render();
+    startPolling();
+  } else {
+    state.screen = 'join';
+    render();
+  }
 }
 
 init();
