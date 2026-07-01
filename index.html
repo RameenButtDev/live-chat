@@ -183,6 +183,9 @@
 const ROOM_KEY = 'room_id';
 const ME_KEY = 'me_id';
 
+// Yahan apna Render Live Backend URL lagayein (Aakhri mein slash '/' mat lagana)
+const RENDER_BACKEND_URL = "https://live-chat-esyy.onrender.com";
+
 function getQueryParam(name){
   return new URLSearchParams(window.location.search).get(name);
 }
@@ -248,20 +251,18 @@ async function detectStorage() {
     storageType = 'claude';
     return;
   }
-  // Try local server API
-  if (window.location.protocol.startsWith('http')) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 1000);
-      const res = await fetch('/api/storage?key=__ping__', { signal: controller.signal });
-      clearTimeout(timeoutId);
-      if (res.ok) {
-        storageType = 'server';
-        return;
-      }
-    } catch (e) {
-      // server down or not present, fallback to local storage
+  // Try Live Render server API
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1000);
+    const res = await fetch(`${RENDER_BACKEND_URL}/api/storage?key=__ping__`, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    if (res.ok) {
+      storageType = 'server';
+      return;
     }
+  } catch (e) {
+    // server down or not present, fallback to local storage
   }
   storageType = 'local';
 }
@@ -272,7 +273,7 @@ async function storageGet(key){
       const r = await window.storage.get(key, true);
       return r ? JSON.parse(r.value) : null;
     } else if (storageType === 'server') {
-      const res = await fetch(`/api/storage?key=${encodeURIComponent(key)}`);
+      const res = await fetch(`${RENDER_BACKEND_URL}/api/storage?key=${encodeURIComponent(key)}`);
       if (!res.ok) return null;
       const data = await res.json();
       return data.value ? JSON.parse(data.value) : null;
@@ -292,7 +293,7 @@ async function storageSet(key, value){
       await window.storage.set(key, JSON.stringify(value), true);
       return true;
     } else if (storageType === 'server') {
-      const res = await fetch('/api/storage', {
+      const res = await fetch(`${RENDER_BACKEND_URL}/api/storage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key, value: JSON.stringify(value) })
